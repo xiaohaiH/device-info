@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application' version '8.12.0'
+}
+
+android {
+    namespace 'com.gathin.deviceinfo'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'com.gathin.deviceinfo'
+        minSdk 16
+        targetSdk 35
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    signingConfigs {
+        debug {
+            // Old Android needs JAR signing; recent Android with targetSdk >= 30 needs v2+.
+            // Use the local default debug key, not the launcher's machine-specific key.
+            enableV1Signing true
+            enableV2Signing true
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+            debuggable false
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    // JDK 21 warns about Java 8 itself, which is intentional for this legacy-compatible APK.
+    options.compilerArgs += ['-Xlint:-options']
+}

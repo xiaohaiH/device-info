@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">设备信息</string>
+    <string name="title">设备信息 / Android 系统诊断</string>
+    <string name="summary">Android %1$s · API %2$d</string>
+    <string name="hint">方向键移动和滚动，确认键打开；请拍下 Android 版本与 API 等级。</string>
+    <string name="open_settings">打开 Android 原生设置</string>
+    <string name="refresh">刷新信息</string>
+    <string name="settings_result">设置启动结果</string>
+    <string name="close">知道了</string>
+    <string name="privacy">离线工具 · 无联网/存储权限 · 不更改默认桌面</string>
+    <item name="settings_button" type="id" />
+    <item name="refresh_button" type="id" />
+    <item name="report_scroll" type="id" />
+</resources>

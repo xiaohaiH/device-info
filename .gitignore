@@ -1,0 +1,15 @@
+# Android / Gradle generated files
+.gradle/
+build/
+dist/
+local.properties
+/device-info.apk
+
+# Local signing keys
+*.jks
+*.keystore
+
+# IDE / OS
+.idea/
+*.iml
+.DS_Store
