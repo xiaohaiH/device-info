@@ -2,14 +2,90 @@
 <resources>
     <string name="app_name">设备信息</string>
     <string name="title">设备信息 / Android 系统诊断</string>
-    <string name="summary">Android %1$s · API %2$d</string>
-    <string name="hint">方向键移动和滚动，确认键打开；请拍下 Android 版本与 API 等级。</string>
-    <string name="open_settings">打开 Android 原生设置</string>
+    <!-- <string name="summary">Android %1$s · API %2$d</string> -->
+    <string name="hint">触屏点击、滑动；也可用方向键和确认键操作。</string>
+    <string name="open_settings">打开设置</string>
+    <string name="open_task_manager">打开任务管理器</string>
     <string name="refresh">刷新信息</string>
+    <string name="reboot_device">重启设备</string>
+    <string name="reboot_confirm_title">确认尝试重启设备？</string>
+    <string name="reboot_confirm_message">请先保存当前操作。确认后按可用能力尝试 Root、设备所有者及系统重启权限；Root 管理器可能要求授权。没有直接权限时，仅尝试打开已启用无障碍的电源菜单/通知栏或受支持的厂商设置，仍需你手动操作。不会自动开启无障碍，也不会把重启本应用当作整机重启。</string>
+    <string name="reboot_confirm">确认并继续</string>
+    <string name="reboot_options">重启选项</string>
+    <string name="reboot_auto">自动选择重启 / 辅助方式</string>
+    <string name="reboot_accessibility_setup">开启无障碍重启辅助</string>
+    <string name="reboot_vendor_settings">打开厂商定时开关机设置</string>
+    <string name="app_restart_option">仅重启本应用（不重启设备）</string>
+    <string name="app_restart_confirm_title">仅重启本应用？</string>
+    <string name="app_restart_confirm_message">这只会结束本应用进程，不会重启设备或清理其他应用。将安排约 1 秒后尝试重新打开，但系统可能延迟或阻止启动；无法保证 100 毫秒内恢复，请准备手动重新打开应用。</string>
+    <string name="app_restart_confirm">确认重启本应用</string>
+    <string name="reboot_unavailable">没有可用方式，请使用无障碍辅助、厂商设置或设备电源键。</string>
+    <string name="reboot_accessibility_label">设备信息重启辅助</string>
+    <string name="reboot_accessibility_description">仅在你确认后请求打开系统电源菜单（Android 5.0+）或旧系统通知栏，供你手动操作。不读取屏幕内容，不收集无障碍事件，不自动点击重启。开启服务本身不会执行操作。</string>
+    <string name="reboot_accessibility_explain">你需要在系统设置中手动启用“设备信息重启辅助”。此服务仅打开电源菜单或通知栏，不读取屏幕内容、不自动点击。返回应用后仍需重新确认操作。若系统限制侧载应用启用服务，请遵循系统提示；不需要开启设备管理器。</string>
+    <string name="open_accessibility_settings">打开无障碍设置</string>
+    <string name="reboot_admin_label">设备信息设备所有者支持</string>
+    <string name="cancel">取消</string>
+    <string name="reboot_result">重启操作结果</string>
+    <string name="reboot_requesting">正在处理已确认的重启操作，请等待系统响应。</string>
+    <string name="reboot_state_unknown">上次重启操作结果未知，已阻止后续操作；不会自动重试，请先核实设备状态。</string>
     <string name="settings_result">设置启动结果</string>
+    <string name="task_manager_result">任务管理器启动结果</string>
     <string name="close">知道了</string>
-    <string name="privacy">离线工具 · 无联网/存储权限 · 不更改默认桌面</string>
+    <string name="privacy">离线工具 · 旧系统浏览需存储授权 · 不更改默认桌面</string>
+    <string name="install_apk">安装 APK</string>
+    <string name="exit_app">退出应用</string>
+    <string name="apk_return_home">‹ 返回首页</string>
+    <string name="apk_return_home_description">返回主界面</string>
+    <string name="apk_selection_hint">选择本机或系统已挂载 USB 中的单个 APK；安装必须由系统确认。</string>
+    <string name="apk_system_picker">系统选择 APK</string>
+    <string name="apk_local_browser">浏览本机 / USB</string>
+    <string name="apk_parent">↑ 上级目录</string>
+    <string name="apk_parent_description">返回上级目录或存储位置列表</string>
+    <string name="apk_reset">取消 / 重新选择</string>
+    <string name="apk_launch_installer">交给系统安装器</string>
+    <string name="apk_idle_hint">优先使用系统选择器；没有选择器时可浏览存储目录。只读原文件，不使用 Root 或静默安装。</string>
+    <string name="apk_scoped_storage_hint">Android 10+ 的分区存储可能限制直接浏览 APK，请优先使用系统选择器。不会申请“所有文件访问”权限。</string>
+    <string name="apk_no_files">没有可显示的目录或 APK。请检查 USB 是否已挂载、文件是否为 .apk，或改用系统选择器；无法绕过固件访问限制。</string>
+    <string name="apk_storage_roots">可见存储目录（含本机/已挂载 USB 候选）</string>
+    <string name="apk_directory_prefix">目录 · </string>
+    <string name="apk_loading_directory">正在读取目录，请稍候。不会递归扫描整个存储。</string>
+    <string name="apk_preparing">正在复制并检查所选 APK（上限 512 MiB）…\n不会自动安装。USB 移除、空间不足或访问受限时会停止；取消会在当前读取返回后生效。</string>
+    <string name="apk_picking">等待文件选择结果；取消不会安装。</string>
+    <string name="apk_ready">文件：%1$s\n包名：%2$s\n版本：%3$s · 大小：%4$d KiB\n\n点击下方按钮后由系统确认安装。解析成功不代表签名、系统版本或硬件一定兼容。</string>
+    <string name="apk_legacy_browser_title">旧系统浏览限制</string>
+    <string name="apk_legacy_browser_message">Android 8.0 之前只能一次读取目录名称，无法预先限制其内存占用。文件特别多的目录可能导致应用内存不足或退出；后台线程和条目上限不能消除这个风险。建议优先使用系统选择器；确需兜底时，请仅浏览较小的目录。</string>
+    <string name="apk_legacy_browser_continue">继续简易浏览</string>
+    <string name="apk_legacy_sharing_note">旧系统兼容模式：安装器需要只读临时文件。知晓该随机路径的其他应用也可能读取这个 APK；不会开放写权限或其他文件。</string>
+    <string name="apk_picker_missing">没有可用的系统文件选择器，可尝试简易浏览器。USB 必须已由系统挂载；旧系统需先确认浏览限制。</string>
+    <string name="apk_read_permission_hint">旧系统浏览/读取本机和 USB 文件需要存储读取权限。授权后请再次选择文件；不会自动安装。</string>
+    <string name="apk_read_granted">已获得读取权限，请再次点击浏览或选择 APK。</string>
+    <string name="apk_read_denied">未获得读取权限，不能直接浏览受限文件。可尝试系统选择器；若不再弹出授权提示，请在系统应用权限设置中检查。</string>
+    <string name="apk_single_file_only">每次只支持选择一个 .apk，不支持多选或 APKS/XAPK 安装包。</string>
+    <string name="apk_cancelled">已取消当前选择/准备，没有发起安装。</string>
+    <string name="apk_wait_abandoned">已结束等待，但不会撤销系统安装器中的操作。请先核实原安装结果，再决定是否重新选择。</string>
+    <string name="apk_restored">页面已恢复，不会自动安装。准备中的文件需要重新选择；之前交给系统的安装结果请在系统中核实。</string>
+    <string name="apk_unknown_sources_title">需要允许安装未知应用</string>
+    <string name="apk_unknown_sources_message">请在系统设置中自行决定是否允许“设备信息”安装应用。返回后仍需再次点击“交给系统安装器”，不会自动继续。请仅安装可信来源的 APK。</string>
+    <string name="apk_open_permission_settings">打开授权设置</string>
+    <string name="apk_permission_return">从授权设置返回后，请再次点击“交给系统安装器”。取消授权不会安装。</string>
+    <string name="apk_installer_opened">已交给系统安装器，仍需你确认；打开安装器不等于安装成功。若未收到结果，请在系统中核实。</string>
+    <string name="apk_install_success">系统安装器返回安装成功。</string>
+    <string name="apk_install_failure">系统安装器返回失败。可能与签名冲突、系统/硬件不兼容或系统策略有关，请以系统提示为准。</string>
+    <string name="apk_install_unknown">已从安装器返回：可能已取消，或系统未提供可靠结果。未确认安装成功，请在系统中核实。</string>
+    <string name="apk_open_failed">无法打开安装页面：%1$s</string>
     <item name="settings_button" type="id" />
+    <item name="task_manager_button" type="id" />
     <item name="refresh_button" type="id" />
+    <item name="reboot_button" type="id" />
     <item name="report_scroll" type="id" />
+    <item name="install_apk_button" type="id" />
+    <item name="exit_app_button" type="id" />
+    <item name="apk_return_home" type="id" />
+    <item name="apk_picker" type="id" />
+    <item name="apk_browser" type="id" />
+    <item name="apk_up" type="id" />
+    <item name="apk_files" type="id" />
+    <item name="apk_install" type="id" />
+    <item name="apk_reset" type="id" />
 </resources>

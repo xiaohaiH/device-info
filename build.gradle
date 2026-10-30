@@ -18,7 +18,7 @@ android {
     signingConfigs {
         debug {
             // Old Android needs JAR signing; recent Android with targetSdk >= 30 needs v2+.
-            // Use the local default debug key, not the launcher's machine-specific key.
+            // Use this machine's default debug key for local diagnostic builds.
             enableV1Signing true
             enableV2Signing true
         }
@@ -37,6 +37,24 @@ android {
     lint {
         abortOnError true
         checkReleaseBuilds true
+    }
+}
+
+tasks.matching { it.name == 'assembleRelease' }.configureEach {
+    doLast {
+        def releaseApks = fileTree(dir: layout.buildDirectory.dir('outputs/apk/release').get().asFile,
+                include: '*.apk', exclude: '*unsigned*').files
+        if (releaseApks.size() != 1) {
+            throw new GradleException('Expected exactly one signed release APK.')
+        }
+        def apk = releaseApks.iterator().next()
+        [layout.projectDirectory.dir('dist'), layout.projectDirectory].each { destination ->
+            project.copy {
+                from apk
+                into destination
+                rename { 'device-info.apk' }
+            }
+        }
     }
 }
 

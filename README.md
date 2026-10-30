@@ -1,74 +1,46 @@
-# 设备信息 APK
+# 设备信息
 
-供老电视通过 U 盘安装的独立诊断工具。无需 ADB、root、联网或任何运行时权限；不会替换默认桌面，也不会修改系统设置。
-
-这是独立的 Android 工程，不依赖 `tvhome-zh` 仓库、隔离工作树或其构建配置。`src/` 为应用源码，`tests/` 为核心逻辑测试，Gradle Wrapper 和构建/验证脚本均位于本项目内。
+面向各类 Android 设备的独立诊断工具，支持 Android 4.1 / API 16 及以上。
 
 ## 使用
 
-1. 将项目根目录交付的 `device-info.apk` 复制到 U 盘，通过电视文件管理器安装。
-2. 打开“设备信息”，拍下顶部的 **Android 版本 / API 等级** 和下方型号、固件、CPU、内存等信息。
-3. 方向键在按钮和报告区间移动；报告区可上下滚动。支持触屏操作。
-4. “打开 Android 原生设置”只请求标准系统设置组件。“刷新信息”重新读取设备信息与组件状态。
+将 `device-info.apk` 传到设备，通过系统安装器安装后，可：
 
-不要因为看到 YunOS 2.1.0 就把它当作 Android 2.1；实际 SDK_INT/API 等级单独显示。本工具保留对 `tvhome-zh` 项目中 `tvhome-zh-debug.apk` 的 API 21 门槛提示，达到门槛不代表一定可安装/运行。
+- 查看 Android 版本、API 等级、型号、CPU、内存等信息。
+- 打开系统设置或正在运行的服务页面，刷新设备信息。
+- 点击首页“退出应用”关闭应用界面，不强制结束进程；进程由 Android 管理。
+- 点击“安装 APK”，通过系统选择器选择本机/已挂载 U 盘中的 APK；也可使用内置简易文件浏览器。选好后点击“交给系统安装器”，由系统确认安装。
+- 经二次确认，依次尝试 Root、已配置的 Device Owner（Android 7.0+）和系统 `REBOOT` 权限重启；无直接权限时，可使用无障碍菜单或受支持的厂商定时开关机设置辅助，仍需手动操作。
+- 单独选择“仅重启本应用”，不会重启设备；自动重新打开可能被系统延迟或阻止。
 
-## 原生设置的边界
+支持触屏和方向键操作。屏幕方向跟随系统，布局适应窗口大小。首页“安装 APK”与“退出应用”并排；安装页顶部“返回首页”直接回主界面，目录栏右侧“上级目录”只用于文件浏览。
 
-只接受系统包 `com.android.settings`，按顺序检查：
+普通安装不会自动取得 Root 或 Device Owner。Root 管理器可能要求授权；无障碍需你在系统设置手动启用，返回后重新确认才操作。Android 5.0+ 可打开电源菜单，旧系统仅展开通知栏；是否有重启项取决于固件。
 
-- `com.android.settings.Settings`
-- `com.android.settings.homepage.SettingsHomepageActivity`
-- `com.android.settings.Settings$SettingsDashboardActivity`
+旧系统浏览文件可能需要读取存储授权；Android 8.0 之前浏览超大目录仍可能耗尽内存，使用兜底浏览器前会提示风险。Android 10+ 直接浏览受分区存储限制，请优先使用系统选择器。Android 8.0+ 若未允许安装未知应用，会提供授权设置入口，返回后仍需再次点击安装。只支持单个 APK（最多 512 MiB），不支持 APKS/XAPK，不使用 Root 或静默安装。
 
-要求所属包为系统/更新系统应用、组件启用且导出、调用者持有所需权限；别名若指向名单之外的组件也拒绝打开。使用显式 `ComponentName`，不使用通用 `ACTION_SETTINGS` 或厂商 TVSettings 兜底。错误会显示在报告和提示框内，不申请提权、不强制启用组件。
+应用离线运行，设备信息仅在屏幕显示，不上传、不保存文件。安装会临时保存所选 APK 的只读副本，不修改原文件；旧系统使用兼容安装方式，详见技术文档。系统页面、USB 访问、安装和重启均受固件及权限限制，入口不可用时会显示原因。
 
-**包名和类名无法证明系统界面未被修改。** 如果厂商改写了标准类的实现，界面仍由固件决定；如果已经删除原生设置，普通 APK 无法恢复。本应用不是自制设置界面，也不打包或安装 AOSP Settings。
+## 构建
 
-## 系统与签名
+需要 JDK 17+、Android SDK Platform 36 和 Build Tools 36.0.0，可通过 `JAVA_HOME`、`ANDROID_HOME` 指定路径。
 
-- 最低：Android 4.1 / API 16。
-- `compileSdk 36`、`targetSdk 35`：较新的目标版本不会自动提高最低版本。
-- 同一 APK 同时有 **v1 + v2 签名**。API 16–23 使用 v1；较新系统使用 v2，也满足 targetSdk >= 30 应用的现代签名要求。
-- 无 AndroidX、第三方运行时依赖或 native `.so`，不限定 ARM/x86/MIPS ABI。
-- 非 debuggable 的 release 构建，使用构建机器的默认 debug keystore 签名，仅供本地诊断/侧载。另一台机器的密钥通常不同，重新构建可能不能覆盖安装；不要发布为正式商店版本。
-- 不采集设备序列号、MAC、账号或位置。信息只显示在屏幕，不上传、不保存文件。
-
-厂商安装白名单、移除标准 API、复制损坏等问题不由签名方案解决；不能承诺任意 YunOS 固件都可安装。
-
-## Windows 构建
-
-需要 JDK 17+、Android SDK `platforms;android-36` 和 `build-tools;36.0.0`。脚本优先使用 `JAVA_HOME` / `ANDROID_HOME`，否则尝试 Android Studio 的 JBR 和 `%LOCALAPPDATA%\Android\Sdk`。Gradle 8.14.3 / AGP 8.12.0。
-
-在本项目根目录执行：
+在 Windows 项目根目录执行：
 
 ```powershell
-cd C:\Users\seven\AppData\Local\project\device-info
-.\test.ps1
-.\build.ps1 -Offline  # 依赖已缓存时；首次下载依赖则省略 -Offline
+.\build.bat  # 依赖已缓存时可加 -Offline
 ```
 
-输出：`dist\device-info.apk`。根目录 `device-info.apk` 是本次交付副本；后续重新构建时，请以 `dist\device-info.apk` 为准。构建脚本执行测试、release 构建、lint、manifest/权限检查和签名验证，**没有设备安装命令**。
+也可直接运行 `.\build.ps1`（可加 `-Offline`）。这两个入口均运行核心测试、release 构建、lint 和 APK 验证。
 
-macOS / Linux 可设置 JDK/SDK 后运行 `./gradlew assembleRelease lintRelease`；核心测试亦可用 javac 编译 `DeviceReport.java`、`SettingsNavigator.java` 和 `tests/.../CoreTests.java` 后直接运行。图标 PNG 已纳入源码，通常不需要执行 `tools/generate-artwork.ps1`。
+Gradle 的 `assembleRelease` 完成后会自动更新 `dist/device-info.apk` 和根目录 `device-info.apk`，存在时覆盖；直接运行 Gradle 也一样。副本可能在后续 lint 或 APK 验证失败前已更新，应以完整构建的退出状态为准。
 
-单独检查产物：
+产物使用本机默认 debug keystore 签名，仅用于本地诊断和侧载；不同机器重建可能无法覆盖安装。
+
+macOS / Linux 可用 `./gradlew assembleRelease lintRelease` 编译并检查；完整验证流程由 Windows 脚本提供。产物同步的 Gradle 回归测试可在 Windows 上运行 `.\tests\build-output.Tests.ps1`（依赖已缓存时可加 `-Offline`），测试在临时目录执行。单独验证已有 APK：
 
 ```powershell
 .\verify-apk.ps1 -Apk .\dist\device-info.apk
 ```
 
-该脚本对 API 16、17、19、21、23、24、28、30、34、35、36 分别验证签名；**这不是在这些 Android 版本上进行了安装或 UI 测试**。
-
-## 验证范围与真机检查
-
-本机：33 项纯 JVM 策略/报告测试、release 编译、Android lint（无错误）、aapt 包声明检查、apksigner 新旧 API 验证、zipalign 校验。lint 的兼容提示（target 35 非最新 36、旧系统忽略 banner、无 AndroidX 注解、图标/本地化等）不等同于运行失败；未关闭 NewApi 检查。构建工具有 SDK 元数据/Java 8 弃用提示。apksigner 对旧系统检查会提示两项 Gradle `META-INF` 构建元数据不受 v1 保护；代码/资源签名通过，v2 保护整个 APK。
-
-纯 JVM 测试覆盖导航策略收到的状态，不模拟 Android PackageManager、Activity 启动异常或系统启用状态的真实行为；这些适配层分支仍需设备测试。独立只读代码审查未发现关键/重要阻塞项，并补充了成功打开后保留先前失败信息的回归测试。
-
-尚无目标电视或模拟器测试，且没有安装到电脑连接的个人手机。请在电视上检查：
-
-- U 盘安装后能打开，顶部 API 等级可读。
-- 遥控器能选中两个按钮，能进入报告区上下滚动，返回键正常退出。
-- 设置存在时打开系统提供的标准设置；不存在、禁用或受保护时显示原因，不转到厂商简化设置。
-- 在较新 Android 设备上，按钮和内容不被系统状态栏/导航栏遮住。
+构建与签名检查不等于真机验证，实际界面和系统入口需在目标设备确认。实现逻辑见 [技术文档](docs/TECHNICAL.md)，开发约定见 [AGENTS.md](AGENTS.md)。

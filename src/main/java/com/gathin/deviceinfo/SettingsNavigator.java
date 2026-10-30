@@ -50,25 +50,33 @@ final class SettingsNavigator {
     }
 
     static Result open(Access access) {
+        return open(access, CANDIDATES, "标准 Android 设置", LIMITATION);
+    }
+
+    static Result open(Access access, List<String> candidates, String title, String limitation) {
         StringBuilder attempts = new StringBuilder();
-        for (String candidate : CANDIDATES) {
+        for (String candidate : candidates) {
             Status status = access.inspect(candidate);
             if (status == Status.AVAILABLE) {
                 status = access.launch(candidate);
                 if (status == Status.OPENED) {
                     String history = attempts.length() == 0 ? "" : "先前尝试：\n" + attempts + "\n";
-                    return new Result(true, "已请求打开标准组件：\n" + candidate + "\n\n" + history + LIMITATION);
+                    return new Result(true, "已请求打开" + title + "：\n" + candidate + "\n\n" + history + limitation);
                 }
             }
             append(attempts, candidate, status);
         }
-        return new Result(false, "无法打开标准 Android 设置。\n\n" + attempts + LIMITATION);
+        return new Result(false, "无法打开" + title + "。\n\n" + attempts + limitation);
     }
 
     static String describe(Access access) {
-        StringBuilder summary = new StringBuilder("标准设置入口检查\n\n");
-        for (String candidate : CANDIDATES) append(summary, candidate, access.inspect(candidate));
-        return summary.append(LIMITATION).toString();
+        return describe(access, CANDIDATES, "标准设置入口检查", LIMITATION);
+    }
+
+    static String describe(Access access, List<String> candidates, String heading, String limitation) {
+        StringBuilder summary = new StringBuilder(heading).append("\n\n");
+        for (String candidate : candidates) append(summary, candidate, access.inspect(candidate));
+        return summary.append(limitation).toString();
     }
 
     private static void append(StringBuilder text, String candidate, Status status) {

@@ -12,11 +12,7 @@ Push-Location $PSScriptRoot
 try {
     & .\gradlew.bat @argsForGradle
     if ($LASTEXITCODE -ne 0) { throw 'Android build/lint failed.' }
-    $apks = @(Get-ChildItem 'build\outputs\apk\release\*.apk' | Where-Object { $_.Name -notlike '*unsigned*' })
-    if ($apks.Count -ne 1) { throw 'Expected exactly one signed release APK.' }
-    & .\verify-apk.ps1 -Apk $apks[0].FullName
-    New-Item -ItemType Directory -Force 'dist' | Out-Null
-    Copy-Item $apks[0].FullName 'dist\device-info.apk' -Force
+    & .\verify-apk.ps1 -Apk (Join-Path $PSScriptRoot 'dist\device-info.apk')
     Write-Host "Verified APK: $PSScriptRoot\dist\device-info.apk"
 } finally {
     Pop-Location

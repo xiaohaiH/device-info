@@ -10,16 +10,26 @@ import android.content.pm.PackageManager;
 
 /** The only class that can launch another app; all destinations are explicit and allowlisted. */
 final class AndroidSettingsAccess implements SettingsNavigator.Access {
+    enum Destination { SETTINGS, RUNNING_SERVICES }
+
     private final Activity activity;
     private final PackageManager packages;
+    private final Destination destination;
 
     AndroidSettingsAccess(Activity activity) {
+        this(activity, Destination.SETTINGS);
+    }
+
+    AndroidSettingsAccess(Activity activity, Destination destination) {
         this.activity = activity;
+        this.destination = destination;
         packages = activity.getPackageManager();
     }
 
     @Override public SettingsNavigator.Status inspect(String className) {
-        if (!SettingsNavigator.candidates().contains(className)) return SettingsNavigator.Status.NON_STANDARD_TARGET;
+        boolean runningServices = destination == Destination.RUNNING_SERVICES;
+        if (!(runningServices ? RunningServicesNavigator.candidates() : SettingsNavigator.candidates())
+                .contains(className)) return SettingsNavigator.Status.NON_STANDARD_TARGET;
         ComponentName component = new ComponentName(SettingsNavigator.PACKAGE, className);
         try {
             ActivityInfo info = packages.getActivityInfo(component, PackageManager.GET_DISABLED_COMPONENTS);
@@ -31,8 +41,11 @@ final class AndroidSettingsAccess implements SettingsNavigator.Access {
                     || activity.checkCallingOrSelfPermission(info.permission) == PackageManager.PERMISSION_GRANTED;
             SettingsNavigator.Status status = SettingsNavigator.availability(
                     app.packageName, system, enabled, info.exported, permitted);
-            if (status == SettingsNavigator.Status.AVAILABLE && !SettingsNavigator.isStandardTarget(info.targetActivity)) {
-                return SettingsNavigator.Status.NON_STANDARD_TARGET;
+            if (status == SettingsNavigator.Status.AVAILABLE) {
+                boolean standardTarget = runningServices
+                        ? RunningServicesNavigator.isStandardTarget(className, info.targetActivity)
+                        : SettingsNavigator.isStandardTarget(info.targetActivity);
+                if (!standardTarget) return SettingsNavigator.Status.NON_STANDARD_TARGET;
             }
             return status;
         } catch (PackageManager.NameNotFoundException missing) {

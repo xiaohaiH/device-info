@@ -1,0 +1,38 @@
+$ErrorActionPreference = 'Stop'
+
+# Framework UI source contracts only; these do not run an Activity or terminate a process.
+function Assert-True($condition, $message) {
+    if (-not $condition) { throw $message }
+}
+
+$root = Split-Path $PSScriptRoot -Parent
+$activity = [System.IO.File]::ReadAllText((Join-Path $root 'src\main\java\com\gathin\deviceinfo\MainActivity.java'))
+$resources = New-Object System.Xml.XmlDocument
+$resources.Load((Join-Path $root 'src\main\res\values\strings.xml'))
+
+Assert-True ($activity -match 'Button\s+exitApp\s*=\s*button\(R\.string\.exit_app,\s*R\.id\.exit_app_button\)') 'Main screen should create a dedicated exit-app button.'
+Assert-True ($null -ne $resources.SelectSingleNode('/resources/item[@type="id" and @name="exit_app_button"]')) 'Exit button ID must be declared.'
+$label = $resources.SelectSingleNode('/resources/string[@name="exit_app"]')
+Assert-True ($null -ne $label -and -not [string]::IsNullOrWhiteSpace($label.InnerText)) 'Exit button needs a resource-backed label.'
+$listener = [regex]::Match($activity, '(?s)exitApp\.setOnClickListener\(new View\.OnClickListener\(\)\s*\{\s*@Override\s+public void onClick\(View view\)\s*\{(?<body>.*?)\}\s*\}\);')
+Assert-True $listener.Success 'Exit button needs its own listener.'
+Assert-True ($listener.Groups['body'].Value -match '^\s*finishAffinity\(\);\s*$') 'Exit must close the app UI without killing a process, rebooting or scheduling an app restart.'
+Assert-True ($activity -notmatch 'exitApp\.setEnabled\(|exitApp\.requestFocus\(') 'Exit must stay available without being the initial focus target.'
+Write-Host 'PASS main exit: explicit normal UI close, no forced process termination'
+
+Assert-True ($activity -match 'appActions\.addView\(installApk,\s*installSize\)') 'Install APK should belong to the shared app-actions row.'
+Assert-True ($activity -match 'appActions\.addView\(exitApp,\s*new LinearLayout\.LayoutParams\(0,\s*ViewGroup\.LayoutParams\.WRAP_CONTENT,\s*1f\)\)') 'Exit should use equal weight in the app-actions row.'
+Assert-True ($activity -match 'installSize\s*=\s*new LinearLayout\.LayoutParams\(0,\s*ViewGroup\.LayoutParams\.WRAP_CONTENT,\s*1f\)') 'Install APK should have the same weight as Exit.'
+Assert-True ($activity -match 'root\.addView\(appActions,\s*appRow\)') 'Shared app-actions row should be attached to the main screen.'
+Assert-True ($activity -notmatch 'root\.addView\(installApk,') 'Install APK should no longer occupy its own full-width row.'
+Write-Host 'PASS main exit: paired equal-width Install/Exit layout'
+
+foreach ($edge in @(
+    'installApk.setNextFocusRightId(R.id.exit_app_button)',
+    'exitApp.setNextFocusLeftId(R.id.install_apk_button)',
+    'exitApp.setNextFocusDownId(R.id.report_scroll)',
+    'rebootButton.setNextFocusDownId(R.id.exit_app_button)'
+)) { Assert-True ($activity.Contains($edge)) "Missing app-row D-pad link: $edge" }
+Assert-True ($activity -match 'findViewById\(R\.id\.exit_app_button\)\.setNextFocusUpId\(rebootEnabled\s*\?\s*R\.id\.reboot_button\s*:\s*R\.id\.refresh_button\)') 'Exit-up focus should bypass a disabled reboot button.'
+Write-Host 'PASS main exit: D-pad access and disabled-reboot fallback'
+Write-Host 'Main navigation source checks: 3 passed.'
