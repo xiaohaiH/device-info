@@ -6,12 +6,17 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.Switch;
+import android.widget.Toast;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -22,6 +27,9 @@ import java.util.concurrent.Executor;
 
 /** Framework-only UI for Android API 16+: no Material theme, vectors, or AndroidX required. */
 public final class MainActivity extends Activity {
+    private static final int BODY_TEXT_SIZE = 18;
+    private static final int BODY_TEXT_COLOR = Color.rgb(226, 235, 242);
+    private static final int BODY_LEFT_INSET = 4;
     private static final String LAST_RESULT = "settings_result";
     // Keep the saved-state key compatible; it now includes completed-but-blocking outcomes.
     private static final String REBOOT_BLOCKED = "reboot_in_progress";
@@ -36,6 +44,8 @@ public final class MainActivity extends Activity {
     private RebootController rebooter;
     private AndroidRebootAccess rebootAccess;
     private Button rebootButton;
+    private Switch floatingBackSwitch;
+    private boolean updatingFloatingBackSwitch;
     private AlertDialog rebootConfirmation;
     private long rebootConsent;
     private boolean destroyed;
@@ -126,10 +136,10 @@ public final class MainActivity extends Activity {
         appActions.addView(installApk, installSize);
         appActions.addView(exitApp, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         installApk.setNextFocusUpId(compactActions ? R.id.refresh_button : R.id.settings_button);
-        installApk.setNextFocusDownId(R.id.report_scroll);
+        installApk.setNextFocusDownId(R.id.floating_back_help);
         installApk.setNextFocusRightId(R.id.exit_app_button);
         exitApp.setNextFocusLeftId(R.id.install_apk_button);
-        exitApp.setNextFocusDownId(R.id.report_scroll);
+        exitApp.setNextFocusDownId(R.id.floating_back_help);
         exitApp.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View view) { finishAffinity(); }
         });
@@ -142,13 +152,85 @@ public final class MainActivity extends Activity {
             }
         });
 
+        LinearLayout floatingBackRow = new LinearLayout(this);
+        floatingBackRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout floatingBackHelpGroup = new LinearLayout(this);
+        floatingBackHelpGroup.setGravity(Gravity.CENTER_VERTICAL);
+        floatingBackHelpGroup.setBaselineAligned(false);
+        floatingBackHelpGroup.setBackgroundResource(R.drawable.navigation_button);
+        floatingBackHelpGroup.setPadding(dp(BODY_LEFT_INSET), dp(6), dp(8), dp(6));
+        floatingBackHelpGroup.setMinimumHeight(dp(44));
+        TextView floatingBackLabel = text(getString(R.string.floating_back), BODY_TEXT_SIZE, BODY_TEXT_COLOR);
+        floatingBackHelpGroup.addView(floatingBackLabel, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView floatingBackHelp = text(getString(R.string.floating_back_help_marker), 12, BODY_TEXT_COLOR);
+        floatingBackHelp.setGravity(Gravity.CENTER);
+        floatingBackHelp.setIncludeFontPadding(false);
+        floatingBackHelp.setBackgroundResource(R.drawable.floating_help_badge);
+        floatingBackHelpGroup.setContentDescription(getString(R.string.floating_back_help_title));
+        floatingBackHelpGroup.setId(R.id.floating_back_help);
+        floatingBackHelpGroup.setFocusable(true);
+        floatingBackHelpGroup.setNextFocusUpId(R.id.install_apk_button);
+        floatingBackHelpGroup.setNextFocusDownId(R.id.report_scroll);
+        exitApp.setNextFocusForwardId(R.id.floating_back_help);
+        floatingBackHelpGroup.setOnClickListener(view -> new AlertDialog.Builder(this)
+                .setTitle(R.string.floating_back_help_title)
+                .setMessage(R.string.floating_back_help_text)
+                .setPositiveButton(R.string.close, null)
+                .show());
+        LinearLayout.LayoutParams helpSize = new LinearLayout.LayoutParams(dp(18), dp(18));
+        helpSize.leftMargin = dp(4);
+        floatingBackHelpGroup.addView(floatingBackHelp, helpSize);
+        String labelText = floatingBackLabel.getText().toString();
+        Rect labelInk = new Rect();
+        floatingBackHelpGroup.addOnLayoutChangeListener((view, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            floatingBackLabel.getPaint().getTextBounds(labelText, 0, labelText.length(), labelInk);
+            float labelCenter = floatingBackLabel.getTop() + floatingBackLabel.getBaseline()
+                    + labelInk.exactCenterY();
+            float helpCenter = floatingBackHelp.getTop() + floatingBackHelp.getHeight() / 2f;
+            floatingBackHelp.setTranslationY(labelCenter - helpCenter);
+        });
+        floatingBackRow.addView(floatingBackHelpGroup, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        floatingBackRow.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+
+        floatingBackSwitch = new Switch(this);
+        floatingBackSwitch.setId(R.id.floating_back_switch);
+        floatingBackSwitch.setSaveEnabled(false);
+        boolean supportsFloatingBack = Build.VERSION.SDK_INT >= 22;
+        floatingBackSwitch.setContentDescription(getString(supportsFloatingBack
+                ? R.string.floating_back : R.string.floating_back_unsupported));
+        floatingBackSwitch.setEnabled(supportsFloatingBack);
+        floatingBackHelpGroup.setNextFocusForwardId(supportsFloatingBack
+                ? R.id.floating_back_switch : R.id.report_scroll);
+        floatingBackSwitch.setNextFocusForwardId(R.id.report_scroll);
+        floatingBackSwitch.setTextColor(Color.WHITE);
+        floatingBackSwitch.setMinHeight(dp(48));
+        floatingBackSwitch.setNextFocusUpId(R.id.install_apk_button);
+        floatingBackSwitch.setNextFocusDownId(R.id.report_scroll);
+        if (supportsFloatingBack) {
+            floatingBackHelpGroup.setNextFocusRightId(R.id.floating_back_switch);
+            floatingBackSwitch.setNextFocusLeftId(R.id.floating_back_help);
+            exitApp.setNextFocusDownId(R.id.floating_back_switch);
+        }
+        floatingBackRow.addView(floatingBackSwitch, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(floatingBackRow, matchWrap());
+        floatingBackSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override public void onCheckedChanged(CompoundButton button, boolean enabled) {
+                if (!updatingFloatingBackSwitch) changeFloatingBack(enabled);
+            }
+        });
+
         scroll = new ScrollView(this);
         scroll.setId(R.id.report_scroll);
         scroll.setFocusable(true);
         scroll.setSmoothScrollingEnabled(true);
-        scroll.setNextFocusUpId(R.id.install_apk_button);
-        report = text("", 18, Color.rgb(226, 235, 242));
-        report.setPadding(dp(4), dp(8), dp(12), dp(20));
+        scroll.setNextFocusUpId(supportsFloatingBack ? R.id.floating_back_switch : R.id.floating_back_help);
+        report = text("", BODY_TEXT_SIZE, BODY_TEXT_COLOR);
+        report.setPadding(dp(BODY_LEFT_INSET), dp(8), dp(12), dp(20));
         scroll.addView(report, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -189,6 +271,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         resumed = true;
+        refreshFloatingBackSwitch();
         refreshReport(); // Recheck permission after returning; never executes a reboot.
         rebootObserver.run();
     }
@@ -265,6 +348,33 @@ public final class MainActivity extends Activity {
                 .setNegativeButton(R.string.cancel, null)
                 .create();
         showRebootDialog(dialog);
+    }
+
+    private void refreshFloatingBackSwitch() {
+        updatingFloatingBackSwitch = true;
+        floatingBackSwitch.setChecked(Build.VERSION.SDK_INT >= 22
+                && RebootAccessibilityService.floatingBackEnabled(this));
+        updatingFloatingBackSwitch = false;
+    }
+
+    private void changeFloatingBack(boolean enabled) {
+        if (enabled && !RebootAccessibilityService.connected()) {
+            refreshFloatingBackSwitch();
+            new AlertDialog.Builder(this)
+                    .setTitle(R.string.floating_back)
+                    .setMessage(R.string.floating_back_setup)
+                    .setNegativeButton(R.string.cancel, null)
+                    .setPositiveButton(R.string.open_accessibility_settings, (dialog, which) -> {
+                        RebootController.Result result = new AndroidRebootPages(this).openAccessibilitySettings();
+                        if (!result.requested) showResult(false, result.message, R.string.floating_back);
+                    })
+                    .show();
+            return;
+        }
+        if (!RebootAccessibilityService.setFloatingBackEnabled(this, enabled)) {
+            refreshFloatingBackSwitch();
+            Toast.makeText(this, R.string.floating_back_failed, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void explainAccessibility() {

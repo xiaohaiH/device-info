@@ -20,9 +20,23 @@
     <string name="app_restart_confirm_message">这只会结束本应用进程，不会重启设备或清理其他应用。将安排约 1 秒后尝试重新打开，但系统可能延迟或阻止启动；无法保证 100 毫秒内恢复，请准备手动重新打开应用。</string>
     <string name="app_restart_confirm">确认重启本应用</string>
     <string name="reboot_unavailable">没有可用方式，请使用无障碍辅助、厂商设置或设备电源键。</string>
-    <string name="reboot_accessibility_label">设备信息重启辅助</string>
-    <string name="reboot_accessibility_description">仅在你确认后请求打开系统电源菜单（Android 5.0+）或旧系统通知栏，供你手动操作。不读取屏幕内容，不收集无障碍事件，不自动点击重启。开启服务本身不会执行操作。</string>
-    <string name="reboot_accessibility_explain">你需要在系统设置中手动启用“设备信息重启辅助”。此服务仅打开电源菜单或通知栏，不读取屏幕内容、不自动点击。返回应用后仍需重新确认操作。若系统限制侧载应用启用服务，请遵循系统提示；不需要开启设备管理器。</string>
+    <string name="reboot_accessibility_label">设备信息无障碍辅助</string>
+    <string name="reboot_accessibility_description">仅在你确认后请求打开系统电源菜单（Android 5.0+）或旧系统通知栏，供你手动操作。你也可以开启悬浮返回键，点击圆点执行系统返回。不读取屏幕内容，不收集无障碍事件，不自动点击重启。重启和返回操作都需要你主动触发。</string>
+    <string name="reboot_accessibility_explain">你需要在系统设置中手动启用“设备信息无障碍辅助”。此服务可以打开电源菜单或通知栏，并提供可选的悬浮返回键，不读取屏幕内容、不自动点击。返回应用后仍需重新确认操作。若系统限制侧载应用启用服务，请遵循系统提示；不需要开启设备管理器。</string>
+    <string name="floating_back">悬浮返回键</string>
+    <string name="floating_back_help_marker">\?</string>
+    <string name="floating_back_help_title">悬浮返回键说明</string>
+    <string name="floating_back_help_text">打开开关后，屏幕上会显示一个悬浮圆点，切到其他应用也能使用。\n\n轻点圆点返回上一层。拖动圆点可调整位置。原地长按，看到“松手后返回首页”后松手，即可返回系统桌面。如果此时拖动，提示会变为“已取消”，松手只会放下圆点。\n\n此功能需要 Android 5.1 或以上，并需启用“设备信息无障碍辅助”。关闭开关即可隐藏圆点。</string>
+    <string name="floating_back_unsupported">悬浮返回键需要 Android 5.1 或以上</string>
+    <string name="floating_back_setup">请在系统设置中启用“设备信息无障碍辅助”，然后返回这里打开开关。</string>
+    <string name="floating_back_failed">无法显示悬浮返回键</string>
+    <string name="floating_back_action">轻点返回上一层，长按返回系统桌面</string>
+    <string name="floating_home_ready">松手后返回首页</string>
+    <string name="floating_home_cancelled">已取消</string>
+    <string name="floating_home_failed">系统未接受返回桌面操作</string>
+    <string name="floating_back_action_failed">系统未接受返回操作</string>
+    <item name="floating_back_help" type="id" />
+    <item name="floating_back_switch" type="id" />
     <string name="open_accessibility_settings">打开无障碍设置</string>
     <string name="reboot_admin_label">设备信息设备所有者支持</string>
     <string name="cancel">取消</string>

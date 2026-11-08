@@ -30,9 +30,46 @@ Write-Host 'PASS main exit: paired equal-width Install/Exit layout'
 foreach ($edge in @(
     'installApk.setNextFocusRightId(R.id.exit_app_button)',
     'exitApp.setNextFocusLeftId(R.id.install_apk_button)',
-    'exitApp.setNextFocusDownId(R.id.report_scroll)',
+    'exitApp.setNextFocusDownId(R.id.floating_back_help)',
     'rebootButton.setNextFocusDownId(R.id.exit_app_button)'
 )) { Assert-True ($activity.Contains($edge)) "Missing app-row D-pad link: $edge" }
 Assert-True ($activity -match 'findViewById\(R\.id\.exit_app_button\)\.setNextFocusUpId\(rebootEnabled\s*\?\s*R\.id\.reboot_button\s*:\s*R\.id\.refresh_button\)') 'Exit-up focus should bypass a disabled reboot button.'
 Write-Host 'PASS main exit: D-pad access and disabled-reboot fallback'
 Write-Host 'Main navigation source checks: 3 passed.'
+
+$service = [IO.File]::ReadAllText((Join-Path $root 'src/main/java/com/gathin/deviceinfo/RebootAccessibilityService.java'))
+$overlay = [IO.File]::ReadAllText((Join-Path $root 'src/main/java/com/gathin/deviceinfo/FloatingBackButton.java'))
+Assert-True ($activity -match 'Build\.VERSION\.SDK_INT >= 22') 'Floating back requires an API 22 gate.'
+Assert-True ($service -match '(?s)onUnbind\(Intent intent\)\s*\{\s*removeFloatingBack\(\);') 'Unbinding must remove the floating button.'
+Assert-True ($overlay -match '(?s)setOnClickListener.*performGlobalAction\(AccessibilityService\.GLOBAL_ACTION_BACK\)') 'Clicking the overlay should request system Back.'
+Write-Host 'PASS floating back: API gate, service cleanup, and Back action'
+
+Assert-True ($overlay -match '(?s)ACTION_MOVE.*updateViewLayout') 'Dragging should move the overlay.'
+Assert-True ($overlay -match 'if \(dragging \|\| movedPastTouchSlop\(event\)\)\s*\{\s*cancelHome\(\);\s*return true;') 'Releasing a drag must not request Back.'
+Write-Host 'PASS floating back: drag moves the window and cancels the release action'
+
+Assert-True ($overlay -match '(?s)void remove\(\).*removeCallbacks\(dimButton\).*removeViewImmediate') 'Removing the overlay must stop its effects.'
+Write-Host 'PASS floating back: idle fade cleanup'
+
+Assert-True ($overlay -match '(?s)ACTION_UP:.*?if \(dragging \|\| movedPastTouchSlop\(event\)\).*?return true;.*?if \(homeReady\)\s*\{.*?view\.performLongClick\(\);') 'Only a stationary long press should request Home on release.'
+Assert-True ($overlay -match '(?s)setOnLongClickListener.*performGlobalAction\(AccessibilityService\.GLOBAL_ACTION_HOME\)') 'Long press should request system Home.'
+Write-Host 'PASS floating back: stationary long press goes Home on release'
+
+Assert-True ($overlay -match '(?s)ACTION_DOWN:.*?postDelayed\(armHome, ViewConfiguration\.getLongPressTimeout\(\)\)') 'Hold should show a readiness hint before release.'
+Assert-True ($overlay -match '(?s)ACTION_MOVE:.*?cancelHome\(\);') 'Dragging should cancel a pending Home action.'
+Write-Host 'PASS floating back: long press readiness and drag cancellation'
+
+Assert-True ($activity -notmatch 'floatingBackSwitch\.setText\(') 'The switch must have no clickable text label.'
+Assert-True ($activity -match 'floatingBackHelpGroup\.setOnClickListener' -and $activity -notmatch 'floatingBackRow\.setOnClickListener|floatingBackLabel\.setOnClickListener|floatingBackHelp\.setOnClickListener') 'Only the shared label and help group should open help.'
+Write-Host 'PASS floating back: independent switch and help targets'
+
+Assert-True ($activity -notmatch 'floatingBackSwitch\.setText(On|Off)\(') 'The switch should keep its native on/off labels.'
+Write-Host 'PASS floating back: native switch styling'
+
+Assert-True ($activity.Contains('exitApp.setNextFocusForwardId(R.id.floating_back_help)')) 'Tab should enter the help group before the switch.'
+Assert-True ($activity.Contains('floatingBackHelpGroup.setNextFocusForwardId(supportsFloatingBack')) 'Tab should skip an unavailable switch.'
+Write-Host 'PASS floating back: explicit Tab order'
+
+Assert-True ($activity.Contains('installApk.setNextFocusDownId(R.id.floating_back_help)')) 'D-pad should enter help even on unsupported Android.'
+Assert-True ($activity.Contains('scroll.setNextFocusUpId(supportsFloatingBack ? R.id.floating_back_switch : R.id.floating_back_help)')) 'D-pad should return to help when the switch is unavailable.'
+Write-Host 'PASS floating back: D-pad access on unsupported Android'

@@ -2,7 +2,9 @@ package com.gathin.deviceinfo;
 
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.TargetApi;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.view.accessibility.AccessibilityEvent;
 
@@ -10,14 +12,61 @@ import android.view.accessibility.AccessibilityEvent;
 public final class RebootAccessibilityService extends AccessibilityService {
     private static volatile RebootAccessibilityService service;
 
-    @Override protected void onServiceConnected() { service = this; }
+    private FloatingBackButton floatingBack;
+
+    @Override protected void onServiceConnected() {
+        service = this;
+        if (Build.VERSION.SDK_INT >= 22 && floatingBackEnabled(this) && !showFloatingBack()) {
+            preferences(this).edit().putBoolean("enabled", false).apply();
+        }
+    }
+
+    private static SharedPreferences preferences(Context context) {
+        return context.getSharedPreferences("floating_back", Context.MODE_PRIVATE);
+    }
+
+    static boolean floatingBackEnabled(Context context) {
+        return preferences(context).getBoolean("enabled", false);
+    }
+
+    static boolean setFloatingBackEnabled(Context context, boolean enabled) {
+        RebootAccessibilityService current = service;
+        if (enabled) {
+            if (Build.VERSION.SDK_INT < 22 || current == null || !current.showFloatingBack()) return false;
+        } else if (current != null) {
+            current.removeFloatingBack();
+        }
+        preferences(context).edit().putBoolean("enabled", enabled).apply();
+        return true;
+    }
+
+    @TargetApi(22)
+    private boolean showFloatingBack() {
+        if (floatingBack != null) return true;
+        try {
+            floatingBack = new FloatingBackButton(this);
+            return true;
+        } catch (RuntimeException failure) {
+            android.util.Log.w("FloatingBack", "Could not add accessibility overlay", failure);
+            return false;
+        }
+    }
+
+    private void removeFloatingBack() {
+        if (Build.VERSION.SDK_INT >= 22 && floatingBack != null) {
+            floatingBack.remove();
+            floatingBack = null;
+        }
+    }
     @Override public void onAccessibilityEvent(AccessibilityEvent event) { }
     @Override public void onInterrupt() { }
     @Override public boolean onUnbind(Intent intent) {
+        removeFloatingBack();
         if (service == this) service = null;
         return super.onUnbind(intent);
     }
     @Override public void onDestroy() {
+        removeFloatingBack();
         if (service == this) service = null;
         super.onDestroy();
     }
