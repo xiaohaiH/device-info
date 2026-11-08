@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Only legacy browsing/file-path reads; modern Android uses user-selected document grants. -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
+    <!-- API 16–21 use the legacy system overlay. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" android:maxSdkVersion="21" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 

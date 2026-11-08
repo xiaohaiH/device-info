@@ -24,17 +24,17 @@ if ($text -match 'application-debuggable|native-code:') { throw 'APK 必须为�
 $permissions = & "$tools\aapt.exe" dump permissions $Apk
 if ($LASTEXITCODE -ne 0) { throw '无法解析 APK 权限。' }
 $declaredPermissions = @($permissions | Where-Object { $_ -match '^\s*uses-permission' })
-$expectedPermissions = @('android.permission.REBOOT', 'android.permission.REQUEST_INSTALL_PACKAGES', 'android.permission.READ_EXTERNAL_STORAGE')
+$expectedPermissions = @('android.permission.REBOOT', 'android.permission.REQUEST_INSTALL_PACKAGES', 'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.SYSTEM_ALERT_WINDOW')
 $permissionNames = @($declaredPermissions | ForEach-Object {
     if ($_ -match "name='([^']+)'") { $Matches[1] } else { throw 'APK 权限声明格式有误。' }
 })
-if ($permissionNames.Count -ne 3 -or (Compare-Object -CaseSensitive $expectedPermissions $permissionNames)) {
-    throw 'APK 只允许声明 REBOOT、REQUEST_INSTALL_PACKAGES 和有版本上限的 READ_EXTERNAL_STORAGE。'
+if ($permissionNames.Count -ne 4 -or (Compare-Object -CaseSensitive $expectedPermissions $permissionNames)) {
+    throw 'APK 权限声明不符合预期。'
 }
 $manifest = & "$tools\aapt.exe" dump xmltree $Apk AndroidManifest.xml
 if ($LASTEXITCODE -ne 0) { throw '无法解码 APK 清单。' }
 if (($manifest -join "`n") -match 'android.intent.category.HOME|android.intent.category.DEFAULT') { throw '诊断工具不可注册为默认桌面。' }
-Write-Host 'PASS manifest: API 16+, target 35, exact reboot/install/legacy-read permissions, no native code/HOME role, release build'
+Write-Host 'PASS manifest: API 16+, target 35, exact reboot/install/legacy-read/legacy-overlay permissions, no native code/HOME role, release build'
 $manifestText = $manifest -join "`n"
 foreach ($entry in @(
     @('service', 'RebootAccessibilityService', 'android.permission.BIND_ACCESSIBILITY_SERVICE'),
@@ -77,9 +77,14 @@ Write-Host 'PASS reboot helpers: protected service/admin receiver, no accessibil
 $permissionBlocks = @([regex]::Matches($manifestText,
     '(?m)^[ \t]*E: uses-permission [^\r\n]*\r?\n(?<attrs>(?:[ \t]*A: [^\r\n]*\r?\n)*)'))
 $storage = @($permissionBlocks | Where-Object { $_.Groups['attrs'].Value -match 'android:name\([^)]+\)="android\.permission\.READ_EXTERNAL_STORAGE"' })
-if ($permissionBlocks.Count -ne 3 -or $storage.Count -ne 1 -or
+if ($permissionBlocks.Count -ne 4 -or $storage.Count -ne 1 -or
     $storage[0].Groups['attrs'].Value -notmatch 'android:maxSdkVersion[^\r\n]*\(type 0x10\)0x1c(?:\s|$)') {
     throw '旧版存储读取权限的适用上限必须为 API 28。'
+}
+$overlayPermission = @($permissionBlocks | Where-Object { $_.Groups['attrs'].Value -match 'android:name\([^)]+\)="android\.permission\.SYSTEM_ALERT_WINDOW"' })
+if ($overlayPermission.Count -ne 1 -or
+    $overlayPermission[0].Groups['attrs'].Value -notmatch 'android:maxSdkVersion[^\r\n]*\(type 0x10\)0x15(?:\s|$)') {
+    throw '悬浮窗口权限的适用上限必须为 API 21。'
 }
 foreach ($entry in @(@('activity', 'ApkInstallActivity'), @('provider', 'ApkFileProvider'))) {
     $pattern = '(?ms)^(?<indent>[ \t]*)E: ' + $entry[0] + '[^\r\n]*\r?\n(?<attrs>(?:[ \t]*A: [^\r\n]*\r?\n)*)(?<children>.*?)(?=^\k<indent>E:|\z)'

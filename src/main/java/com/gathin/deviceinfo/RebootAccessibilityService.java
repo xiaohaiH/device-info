@@ -2,45 +2,76 @@ package com.gathin.deviceinfo;
 
 import android.accessibilityservice.AccessibilityService;
 import android.annotation.TargetApi;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.provider.Settings;
 import android.view.accessibility.AccessibilityEvent;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** Opt-in global actions only. No screen content, event collection, gestures or automatic clicks. */
 public final class RebootAccessibilityService extends AccessibilityService {
     private static volatile RebootAccessibilityService service;
+    // Service lifecycle and UI listeners run on the main thread.
+    private static final Set<Runnable> floatingBackListeners = new HashSet<>();
 
     private FloatingBackButton floatingBack;
 
     @Override protected void onServiceConnected() {
         service = this;
-        if (Build.VERSION.SDK_INT >= 22 && floatingBackEnabled(this) && !showFloatingBack()) {
-            preferences(this).edit().putBoolean("enabled", false).apply();
-        }
+        if (floatingBackRequested(this)) showFloatingBack();
+        notifyFloatingBackChanged();
     }
 
     private static SharedPreferences preferences(Context context) {
         return context.getSharedPreferences("floating_back", Context.MODE_PRIVATE);
     }
 
-    static boolean floatingBackEnabled(Context context) {
+    private static boolean floatingBackRequested(Context context) {
         return preferences(context).getBoolean("enabled", false);
+    }
+
+    static boolean floatingBackVisible() {
+        RebootAccessibilityService current = service;
+        return current != null && current.floatingBack != null;
+    }
+
+    static void addFloatingBackListener(Runnable listener) { floatingBackListeners.add(listener); }
+
+    static void removeFloatingBackListener(Runnable listener) { floatingBackListeners.remove(listener); }
+
+    private static void notifyFloatingBackChanged() {
+        for (Runnable listener : floatingBackListeners) listener.run();
+    }
+
+    private static boolean enabledInSettings(Context context) {
+        ComponentName ownService = new ComponentName(context, RebootAccessibilityService.class);
+        String enabledServices = Settings.Secure.getString(context.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (enabledServices == null) return false;
+        for (String entry : enabledServices.split(":")) {
+            if (ownService.equals(ComponentName.unflattenFromString(entry))) return true;
+        }
+        return false;
     }
 
     static boolean setFloatingBackEnabled(Context context, boolean enabled) {
         RebootAccessibilityService current = service;
         if (enabled) {
-            if (Build.VERSION.SDK_INT < 22 || current == null || !current.showFloatingBack()) return false;
+            if (current != null && !current.showFloatingBack()) return false;
+            if (current == null && !enabledInSettings(context)) return false;
         } else if (current != null) {
             current.removeFloatingBack();
         }
         preferences(context).edit().putBoolean("enabled", enabled).apply();
+        notifyFloatingBackChanged();
         return true;
     }
 
-    @TargetApi(22)
     private boolean showFloatingBack() {
         if (floatingBack != null) return true;
         try {
@@ -53,7 +84,7 @@ public final class RebootAccessibilityService extends AccessibilityService {
     }
 
     private void removeFloatingBack() {
-        if (Build.VERSION.SDK_INT >= 22 && floatingBack != null) {
+        if (floatingBack != null) {
             floatingBack.remove();
             floatingBack = null;
         }
@@ -61,14 +92,20 @@ public final class RebootAccessibilityService extends AccessibilityService {
     @Override public void onAccessibilityEvent(AccessibilityEvent event) { }
     @Override public void onInterrupt() { }
     @Override public boolean onUnbind(Intent intent) {
-        removeFloatingBack();
-        if (service == this) service = null;
+        disconnect();
         return super.onUnbind(intent);
     }
     @Override public void onDestroy() {
-        removeFloatingBack();
-        if (service == this) service = null;
+        disconnect();
         super.onDestroy();
+    }
+
+    private void disconnect() {
+        removeFloatingBack();
+        if (service == this) {
+            service = null;
+            notifyFloatingBackChanged();
+        }
     }
 
     static boolean connected() { return service != null; }

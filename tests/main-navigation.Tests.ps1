@@ -39,10 +39,10 @@ Write-Host 'Main navigation source checks: 3 passed.'
 
 $service = [IO.File]::ReadAllText((Join-Path $root 'src/main/java/com/gathin/deviceinfo/RebootAccessibilityService.java'))
 $overlay = [IO.File]::ReadAllText((Join-Path $root 'src/main/java/com/gathin/deviceinfo/FloatingBackButton.java'))
-Assert-True ($activity -match 'Build\.VERSION\.SDK_INT >= 22') 'Floating back requires an API 22 gate.'
-Assert-True ($service -match '(?s)onUnbind\(Intent intent\)\s*\{\s*removeFloatingBack\(\);') 'Unbinding must remove the floating button.'
+Assert-True ($overlay -match '(?s)Build\.VERSION\.SDK_INT >= 22.*?TYPE_ACCESSIBILITY_OVERLAY.*?TYPE_PHONE') 'Use the legacy window type before API 22.'
+Assert-True ($service -match '(?s)onUnbind\(Intent intent\)\s*\{\s*disconnect\(\);') 'Unbinding must remove the floating button.'
 Assert-True ($overlay -match '(?s)setOnClickListener.*performGlobalAction\(AccessibilityService\.GLOBAL_ACTION_BACK\)') 'Clicking the overlay should request system Back.'
-Write-Host 'PASS floating back: API gate, service cleanup, and Back action'
+Write-Host 'PASS floating back: API 16+ window types, service cleanup, and Back action'
 
 Assert-True ($overlay -match '(?s)ACTION_MOVE.*updateViewLayout') 'Dragging should move the overlay.'
 Assert-True ($overlay -match 'if \(dragging \|\| movedPastTouchSlop\(event\)\)\s*\{\s*cancelHome\(\);\s*return true;') 'Releasing a drag must not request Back.'
@@ -67,9 +67,20 @@ Assert-True ($activity -notmatch 'floatingBackSwitch\.setText(On|Off)\(') 'The s
 Write-Host 'PASS floating back: native switch styling'
 
 Assert-True ($activity.Contains('exitApp.setNextFocusForwardId(R.id.floating_back_help)')) 'Tab should enter the help group before the switch.'
-Assert-True ($activity.Contains('floatingBackHelpGroup.setNextFocusForwardId(supportsFloatingBack')) 'Tab should skip an unavailable switch.'
+Assert-True ($activity.Contains('floatingBackHelpGroup.setNextFocusForwardId(R.id.floating_back_switch)')) 'Tab should reach the switch.'
 Write-Host 'PASS floating back: explicit Tab order'
 
 Assert-True ($activity.Contains('installApk.setNextFocusDownId(R.id.floating_back_help)')) 'D-pad should enter help even on unsupported Android.'
-Assert-True ($activity.Contains('scroll.setNextFocusUpId(supportsFloatingBack ? R.id.floating_back_switch : R.id.floating_back_help)')) 'D-pad should return to help when the switch is unavailable.'
+Assert-True ($activity.Contains('scroll.setNextFocusUpId(R.id.floating_back_switch)')) 'D-pad should return to the floating switch.'
 Write-Host 'PASS floating back: D-pad access on unsupported Android'
+
+Assert-True ($service -match 'Settings\.Secure\.ENABLED_ACCESSIBILITY_SERVICES') 'Read the configured accessibility state separately from the bound service.'
+Assert-True ($service -match '(?s)current == null && !enabledInSettings\(context\).*?putBoolean\("enabled", enabled\)') 'An enabled but unbound service must allow recording the desired floating-back state.'
+Assert-True ($activity -match 'updated \? R\.string\.floating_back_waiting : R\.string\.floating_back_setup') 'Enabled but unbound must have a separate message.'
+Write-Host 'PASS floating back: wait for an enabled accessibility service to bind'
+
+Assert-True ($activity -match 'floatingBackSwitch\.setChecked\(RebootAccessibilityService\.floatingBackVisible\(\)\)') 'The switch must show actual overlay visibility.'
+Assert-True ($service -match '(?s)onServiceConnected\(\)\s*\{[^}]*floatingBackRequested\(this\).*?notifyFloatingBackChanged\(\);') 'Reconnection should restore the requested overlay and refresh the switch.'
+Assert-True ($service -match '(?s)void disconnect\(\)\s*\{\s*removeFloatingBack\(\);\s*if \(service == this\) \{\s*service = null;\s*notifyFloatingBackChanged\(\);') 'Disconnect should hide the overlay and refresh the switch without changing the preference.'
+Assert-True ($activity -match '(?s)onPause\(\).*?removeFloatingBackListener\(floatingBackObserver\)') 'A paused activity must release its visibility listener.'
+Write-Host 'PASS floating back: actual switch state follows service availability'

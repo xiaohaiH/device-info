@@ -1,7 +1,7 @@
 package com.gathin.deviceinfo;
 
 import android.accessibilityservice.AccessibilityService;
-import android.annotation.TargetApi;
+import android.os.Build;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -17,7 +17,6 @@ import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
-@TargetApi(22)
 final class FloatingBackButton {
     private final WindowManager windows;
     private final View button;
@@ -65,7 +64,7 @@ final class FloatingBackButton {
             return true;
         });
         layout = new WindowManager.LayoutParams(size, size,
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT);
         layout.gravity = Gravity.LEFT | Gravity.TOP;
         windows.getDefaultDisplay().getSize(displaySize);
@@ -73,6 +72,11 @@ final class FloatingBackButton {
         layout.y = Math.max(0, (displaySize.y - size) / 2);
         button.setOnTouchListener(this::handleTouch);
         windows.addView(button, layout);
+    }
+
+    private static int overlayType() {
+        if (Build.VERSION.SDK_INT >= 22) return WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
+        return WindowManager.LayoutParams.TYPE_PHONE;
     }
 
     private boolean handleTouch(View view, MotionEvent event) {
@@ -171,13 +175,17 @@ final class FloatingBackButton {
         hint.setBackground(background);
         WindowManager.LayoutParams hintLayout = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
         hintLayout.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
         hintLayout.y = Math.round(16 * density);
-        windows.addView(hint, hintLayout);
-        homeHint = hint;
+        try {
+            windows.addView(hint, hintLayout);
+            homeHint = hint;
+        } catch (RuntimeException failure) {
+            android.util.Log.w("FloatingBack", "Could not show the floating hint", failure);
+        }
     }
 
     private void hideHomeHint() {

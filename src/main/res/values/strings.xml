@@ -26,8 +26,9 @@
     <string name="floating_back">悬浮返回键</string>
     <string name="floating_back_help_marker">\?</string>
     <string name="floating_back_help_title">悬浮返回键说明</string>
-    <string name="floating_back_help_text">打开开关后，屏幕上会显示一个悬浮圆点，切到其他应用也能使用。\n\n轻点圆点返回上一层。拖动圆点可调整位置。原地长按，看到“松手后返回首页”后松手，即可返回系统桌面。如果此时拖动，提示会变为“已取消”，松手只会放下圆点。\n\n此功能需要 Android 5.1 或以上，并需启用“设备信息无障碍辅助”。关闭开关即可隐藏圆点。</string>
-    <string name="floating_back_unsupported">悬浮返回键需要 Android 5.1 或以上</string>
+    <string name="floating_back_help_text">打开开关后，屏幕上会显示一个悬浮圆点，切到其他应用也能使用。\n\n轻点圆点返回上一层。拖动圆点可调整位置。原地长按，看到“松手后返回首页”后松手，即可返回系统桌面。如果此时拖动，提示会变为“已取消”，松手只会放下圆点。\n\n此功能需启用“设备信息无障碍辅助”。Android 4.1–5.0 上还需允许悬浮窗口，具体权限由设备系统管理。关闭开关即可隐藏圆点。</string>
+    <string name="floating_back_legacy_failed">无法显示悬浮返回键，请检查系统是否允许此应用显示悬浮窗口。</string>
+    <string name="floating_back_waiting">无障碍已开启，正在等待系统连接服务。连接后圆点会自动显示。若一直没有显示，可在系统设置中关闭再开启“设备信息无障碍辅助”。</string>
     <string name="floating_back_setup">请在系统设置中启用“设备信息无障碍辅助”，然后返回这里打开开关。</string>
     <string name="floating_back_failed">无法显示悬浮返回键</string>
     <string name="floating_back_action">轻点返回上一层，长按返回系统桌面</string>

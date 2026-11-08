@@ -46,6 +46,7 @@ public final class MainActivity extends Activity {
     private Button rebootButton;
     private Switch floatingBackSwitch;
     private boolean updatingFloatingBackSwitch;
+    private final Runnable floatingBackObserver = this::refreshFloatingBackSwitch;
     private AlertDialog rebootConfirmation;
     private long rebootConsent;
     private boolean destroyed;
@@ -199,22 +200,16 @@ public final class MainActivity extends Activity {
         floatingBackSwitch = new Switch(this);
         floatingBackSwitch.setId(R.id.floating_back_switch);
         floatingBackSwitch.setSaveEnabled(false);
-        boolean supportsFloatingBack = Build.VERSION.SDK_INT >= 22;
-        floatingBackSwitch.setContentDescription(getString(supportsFloatingBack
-                ? R.string.floating_back : R.string.floating_back_unsupported));
-        floatingBackSwitch.setEnabled(supportsFloatingBack);
-        floatingBackHelpGroup.setNextFocusForwardId(supportsFloatingBack
-                ? R.id.floating_back_switch : R.id.report_scroll);
+        floatingBackSwitch.setContentDescription(getString(R.string.floating_back));
+        floatingBackHelpGroup.setNextFocusForwardId(R.id.floating_back_switch);
         floatingBackSwitch.setNextFocusForwardId(R.id.report_scroll);
         floatingBackSwitch.setTextColor(Color.WHITE);
         floatingBackSwitch.setMinHeight(dp(48));
         floatingBackSwitch.setNextFocusUpId(R.id.install_apk_button);
         floatingBackSwitch.setNextFocusDownId(R.id.report_scroll);
-        if (supportsFloatingBack) {
-            floatingBackHelpGroup.setNextFocusRightId(R.id.floating_back_switch);
-            floatingBackSwitch.setNextFocusLeftId(R.id.floating_back_help);
-            exitApp.setNextFocusDownId(R.id.floating_back_switch);
-        }
+        floatingBackHelpGroup.setNextFocusRightId(R.id.floating_back_switch);
+        floatingBackSwitch.setNextFocusLeftId(R.id.floating_back_help);
+        exitApp.setNextFocusDownId(R.id.floating_back_switch);
         floatingBackRow.addView(floatingBackSwitch, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(floatingBackRow, matchWrap());
@@ -228,7 +223,7 @@ public final class MainActivity extends Activity {
         scroll.setId(R.id.report_scroll);
         scroll.setFocusable(true);
         scroll.setSmoothScrollingEnabled(true);
-        scroll.setNextFocusUpId(supportsFloatingBack ? R.id.floating_back_switch : R.id.floating_back_help);
+        scroll.setNextFocusUpId(R.id.floating_back_switch);
         report = text("", BODY_TEXT_SIZE, BODY_TEXT_COLOR);
         report.setPadding(dp(BODY_LEFT_INSET), dp(8), dp(12), dp(20));
         scroll.addView(report, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
@@ -271,6 +266,7 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         resumed = true;
+        RebootAccessibilityService.addFloatingBackListener(floatingBackObserver);
         refreshFloatingBackSwitch();
         refreshReport(); // Recheck permission after returning; never executes a reboot.
         rebootObserver.run();
@@ -278,6 +274,7 @@ public final class MainActivity extends Activity {
 
     @Override protected void onPause() {
         resumed = false;
+        RebootAccessibilityService.removeFloatingBackListener(floatingBackObserver);
         report.removeCallbacks(rebootObserver);
         super.onPause();
     }
@@ -352,17 +349,17 @@ public final class MainActivity extends Activity {
 
     private void refreshFloatingBackSwitch() {
         updatingFloatingBackSwitch = true;
-        floatingBackSwitch.setChecked(Build.VERSION.SDK_INT >= 22
-                && RebootAccessibilityService.floatingBackEnabled(this));
+        floatingBackSwitch.setChecked(RebootAccessibilityService.floatingBackVisible());
         updatingFloatingBackSwitch = false;
     }
 
     private void changeFloatingBack(boolean enabled) {
+        boolean updated = RebootAccessibilityService.setFloatingBackEnabled(this, enabled);
+        if (!updated) refreshFloatingBackSwitch();
         if (enabled && !RebootAccessibilityService.connected()) {
-            refreshFloatingBackSwitch();
             new AlertDialog.Builder(this)
                     .setTitle(R.string.floating_back)
-                    .setMessage(R.string.floating_back_setup)
+                    .setMessage(updated ? R.string.floating_back_waiting : R.string.floating_back_setup)
                     .setNegativeButton(R.string.cancel, null)
                     .setPositiveButton(R.string.open_accessibility_settings, (dialog, which) -> {
                         RebootController.Result result = new AndroidRebootPages(this).openAccessibilitySettings();
@@ -371,9 +368,10 @@ public final class MainActivity extends Activity {
                     .show();
             return;
         }
-        if (!RebootAccessibilityService.setFloatingBackEnabled(this, enabled)) {
-            refreshFloatingBackSwitch();
-            Toast.makeText(this, R.string.floating_back_failed, Toast.LENGTH_SHORT).show();
+        if (!updated) {
+            Toast.makeText(this, Build.VERSION.SDK_INT < 22
+                    ? R.string.floating_back_legacy_failed : R.string.floating_back_failed,
+                    Toast.LENGTH_LONG).show();
         }
     }
 
