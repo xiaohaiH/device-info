@@ -1,4 +1,5 @@
 # Android / Gradle generated files
+.pnpm-store/
 .gradle/
 build/
 dist/
@@ -8,6 +9,8 @@ local.properties
 # Local signing keys
 *.jks
 *.keystore
+*.p12
+/config.local.jsonc
 
 # IDE / OS
 .idea/

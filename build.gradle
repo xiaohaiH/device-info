@@ -1,5 +1,26 @@
+import groovy.json.JsonParserType
+import groovy.json.JsonSlurper
+
 plugins {
     id 'com.android.application' version '8.12.0'
+}
+
+def signingKey = providers.environmentVariable('DEVICE_INFO_SIGNING_KEYSTORE').orNull
+def signingPassword = providers.environmentVariable('DEVICE_INFO_SIGNING_PASSWORD').orNull
+def localSigningConfig = layout.projectDirectory.file('config.local.jsonc').asFile
+if (!signingKey && !signingPassword && localSigningConfig.isFile()) {
+    def config
+    try {
+        config = new JsonSlurper().setType(JsonParserType.LAX).parse(localSigningConfig, 'UTF-8')
+    } catch (Exception ignored) {
+        throw new GradleException('[DEVICE_INFO_SIGNING:CONFIG_FORMAT] config.local.jsonc 格式有误，请参照 config.jsonc。')
+    }
+    if (!(config instanceof Map) || !(config.keystore instanceof String) || !(config.password instanceof String)
+            || config.keystore.isBlank() || config.password.isBlank()) {
+        throw new GradleException('[DEVICE_INFO_SIGNING:CONFIG_FIELDS] 请参照 config.jsonc，在 config.local.jsonc 中填写 keystore 和 password。')
+    }
+    signingKey = config.keystore
+    signingPassword = config.password
 }
 
 android {
@@ -16,16 +37,22 @@ android {
     }
 
     signingConfigs {
-        debug {
-            // Old Android needs JAR signing; recent Android with targetSdk >= 30 needs v2+.
-            // Use this machine's default debug key for local diagnostic builds.
+        distribution {
+            if (signingKey && signingPassword) {
+                storeFile file(signingKey)
+                storeType 'PKCS12'
+                storePassword signingPassword
+                keyAlias 'device-info'
+                keyPassword signingPassword
+            }
             enableV1Signing true
             enableV2Signing true
         }
     }
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.distribution
+            vcsInfo.include = false
             debuggable false
             minifyEnabled false
         }
@@ -40,12 +67,58 @@ android {
     }
 }
 
+def validateDistributionSigning = tasks.register('validateDistributionSigning') {
+    doLast {
+        if (!signingKey || !signingPassword) {
+            throw new GradleException('[DEVICE_INFO_SIGNING:CONFIG_FIELDS] 请先配置签名文件路径和密码。')
+        }
+
+        def keystoreFile = file(signingKey)
+        if (!keystoreFile.isFile()) {
+            throw new GradleException('[DEVICE_INFO_SIGNING:KEYSTORE_MISSING] 找不到签名文件，请检查 keystore 路径。')
+        }
+
+        def keystore = java.security.KeyStore.getInstance('PKCS12')
+        def password = signingPassword.toCharArray()
+        try {
+            keystoreFile.withInputStream { keystore.load(it, password) }
+        } catch (IOException failure) {
+            if (failure.cause instanceof java.security.UnrecoverableKeyException) {
+                throw new GradleException('[DEVICE_INFO_SIGNING:STORE_PASSWORD] 签名文件密码错误，请检查 password。')
+            }
+            throw new GradleException('[DEVICE_INFO_SIGNING:KEYSTORE_INVALID] 无法读取签名文件，请确认它是有效的 PKCS12 文件。')
+        } catch (java.security.GeneralSecurityException ignored) {
+            throw new GradleException('[DEVICE_INFO_SIGNING:KEYSTORE_INVALID] 无法读取签名文件，请确认它是有效的 PKCS12 文件。')
+        }
+
+        if (!keystore.entryInstanceOf('device-info', java.security.KeyStore.PrivateKeyEntry)) {
+            throw new GradleException('[DEVICE_INFO_SIGNING:KEY_ALIAS] 签名文件中没有别名为 device-info 的私钥。')
+        }
+        try {
+            keystore.getKey('device-info', password)
+        } catch (java.security.UnrecoverableKeyException ignored) {
+            throw new GradleException('[DEVICE_INFO_SIGNING:KEY_PASSWORD] 私钥密码错误，本项目要求私钥和签名文件使用同一密码。')
+        }
+
+        def certificate = keystore.getCertificate('device-info')
+        def fingerprint = java.security.MessageDigest.getInstance('SHA-256')
+                .digest(certificate.encoded).encodeHex().toString()
+        if (fingerprint != '5bba546b95ada03af88e26856b059ec131df5c3b6d13bfba34ae3762634a17f2') {
+            throw new GradleException('[DEVICE_INFO_SIGNING:CERTIFICATE_MISMATCH] 签名证书不匹配，请使用原来的 device-info-signing.p12。')
+        }
+    }
+}
+
+tasks.matching { it.name in ['validateSigningRelease', 'packageRelease'] }.configureEach {
+    dependsOn validateDistributionSigning
+}
+
 tasks.matching { it.name == 'assembleRelease' }.configureEach {
     doLast {
         def releaseApks = fileTree(dir: layout.buildDirectory.dir('outputs/apk/release').get().asFile,
                 include: '*.apk', exclude: '*unsigned*').files
         if (releaseApks.size() != 1) {
-            throw new GradleException('Expected exactly one signed release APK.')
+            throw new GradleException('应当生成一个已签名的 release APK，请检查构建产物。')
         }
         def apk = releaseApks.iterator().next()
         [layout.projectDirectory.dir('dist'), layout.projectDirectory].each { destination ->

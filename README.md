@@ -12,7 +12,7 @@
 * 点击“安装 APK”，通过系统选择器选择本机/已挂载 U 盘中的 APK；也可使用内置简易文件浏览器。选好后点击“交给系统安装器”，由系统确认安装。
 * 经二次确认，依次尝试 Root、已配置的 Device Owner（Android 7.0+）和系统 `REBOOT` 权限重启；无直接权限时，可使用无障碍菜单或受支持的厂商定时开关机设置辅助，仍需手动操作。
 * 单独选择“仅重启本应用”，不会重启设备；自动重新打开可能被系统延迟或阻止。
-* 打开“悬浮返回键”开关，在其他应用上方显示圆点。轻点返回上一层，原地长按后按提示松手可回到系统桌面，拖动可移动圆点并取消本次长按返回。需要 Android 5.1 / API 22 及以上，并手动启用“设备信息无障碍辅助”。点击标题或问号可查看说明。
+* 打开“悬浮返回键”，用圆点返回上一层或回到系统桌面（Android 5.1+）。
 
 支持触屏和方向键操作。屏幕方向跟随系统，布局适应窗口大小。首页“安装 APK”与“退出应用”并排；安装页顶部“返回首页”直接回主界面，目录栏右侧“上级目录”只用于文件浏览。
 
@@ -24,7 +24,9 @@
 
 ## 构建
 
-需要 JDK 17+、Android SDK Platform 36 和 Build Tools 36.0.0，可通过 `JAVA_HOME` 、 `ANDROID_HOME` 指定路径。
+推送到 `main` 时，GitHub Actions 会自动打包，也可在 Actions 中选 `main` 手动运行 **Build APK**。验证通过后，从 **Artifacts** 下载 `device-info-apk`，解压得到 `device-info.apk`。拉取请求运行测试和 Lint。主分支打包需要配置仓库 Secrets `APK_SIGNING_KEYSTORE`（Base64 编码的项目签名文件）和 `APK_SIGNING_PASSWORD`（密码），上传前会核对签名指纹。
+
+需要 JDK 17+、Android SDK Platform 36 和 Build Tools 36.0.0。Windows 构建脚本优先使用 `config.local.jsonc` 中的 `jdkPath` 和 `androidSdkPath`，留空时分别读取 `JAVA_HOME` 和 `ANDROID_HOME`。
 
 在 Windows 项目根目录执行：
 
@@ -32,13 +34,13 @@
 .\build.bat  # 依赖已缓存时可加 -Offline
 ```
 
-也可直接运行 `.\build.ps1` （可加 `-Offline` ）。这两个入口均运行核心测试、release 构建、lint 和 APK 验证。
+双击 `build.bat` 后，构建结束时按任意键关闭窗口。自动化可直接运行 `.\build.ps1` （可加 `-Offline` ）。这两个入口均运行核心测试、release 构建、lint 和 APK 验证。
 
 Gradle 的 `assembleRelease` 完成后会自动更新 `dist/device-info.apk` 和根目录 `device-info.apk` ，存在时覆盖；直接运行 Gradle 也一样。副本可能在后续 lint 或 APK 验证失败前已更新，应以完整构建的退出状态为准。
 
-产物使用本机默认 debug keystore 签名，仅用于本地诊断和侧载；不同机器重建可能无法覆盖安装。
+常规构建使用项目专用签名。首次本地打包前，将 [config.jsonc](config.jsonc) 复制为 `config.local.jsonc`，填写签名文件路径和原始密码。换电脑时按[技术说明](技术说明.md#签名备份与恢复)恢复。
 
-macOS / Linux 可用 `./gradlew assembleRelease lintRelease` 编译并检查；完整验证流程由 Windows 脚本提供。产物同步的 Gradle 回归测试可在 Windows 上运行 `.\tests\build-output.Tests.ps1` （依赖已缓存时可加 `-Offline` ），测试在临时目录执行。单独验证已有 APK：
+配置好 `config.local.jsonc` 后，macOS / Linux 设置好 JDK 和 SDK 环境变量后，可执行 `./gradlew assembleRelease lintRelease`；完整验证流程由 Windows 脚本提供。产物同步的 Gradle 回归测试可在 Windows 上运行 `.\tests\build-output.Tests.ps1` （依赖已缓存时可加 `-Offline` ），需设置 `DEVICE_INFO_SIGNING_KEYSTORE`（绝对路径）和 `DEVICE_INFO_SIGNING_PASSWORD`，测试在临时目录执行。单独验证已有 APK：
 
 ```powershell
 .\verify-apk.ps1 -Apk .\dist\device-info.apk

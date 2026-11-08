@@ -1,0 +1,14 @@
+{
+    // 这是字段说明。请复制为 config.local.jsonc，填写签名配置后再打包
+    // 项目专用 PKCS12 签名文件的路径。相对路径从项目根目录计算
+    // Windows 路径可用正斜杠，例如 C:/keys/device-info-signing.p12
+    "keystore": "",
+    // PKCS12 文件的原始密码。config.local.jsonc 含明文密码，请勿分享
+    "password": "",
+    // 可选。JDK 根目录，应包含 bin/java.exe 和 bin/javac.exe
+    // 留空时使用 JAVA_HOME
+    "jdkPath": "",
+    // 可选。Android SDK 根目录，需安装 Platform 36 和 Build Tools 36.0.0。
+    // 留空时使用 ANDROID_HOME 两项路径均可用正斜杠，或相对项目根目录填写
+    "androidSdkPath": "",
+}
