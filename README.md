@@ -24,7 +24,7 @@
 
 ## 构建
 
-推送到 `main` 时，GitHub Actions 会自动打包，也可在 Actions 中选 `main` 手动运行 **Build APK**。验证通过后，从 **Artifacts** 下载 `device-info-apk`，解压得到 `device-info.apk`。拉取请求运行测试和 Lint。主分支打包需要配置仓库 Secrets `APK_SIGNING_KEYSTORE`（Base64 编码的项目签名文件）和 `APK_SIGNING_PASSWORD`（密码），上传前会核对签名指纹。
+推送到 `main` 时，GitHub Actions 会自动打包，也可在 Actions 中选 `main` 手动运行 **Build APK**。验证通过后会自动创建一个带 APK 的 GitHub Release，也可从该次运行的 **Artifacts** 下载 `device-info-apk`，解压得到 `device-info.apk`。拉取请求运行测试和 Lint。主分支打包需要配置仓库 Secrets `APK_SIGNING_KEYSTORE`（Base64 编码的项目签名文件）和 `APK_SIGNING_PASSWORD`（密码），上传前会核对签名指纹。
 
 需要 JDK 17+、Android SDK Platform 36 和 Build Tools 36.0.0。Windows 构建脚本优先使用 `config.local.jsonc` 中的 `jdkPath` 和 `androidSdkPath`，留空时分别读取 `JAVA_HOME` 和 `ANDROID_HOME`。
 

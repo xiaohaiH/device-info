@@ -61,3 +61,32 @@ jobs:
           name: device-info-apk
           path: dist/device-info.apk
           if-no-files-found: error
+
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download verified APK
+        uses: actions/download-artifact@v8
+        with:
+          name: device-info-apk
+          path: dist
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          main_sha=$(gh api "repos/$GH_REPO/commits/main" --jq .sha)
+          if [ "$main_sha" != "$GITHUB_SHA" ]; then
+            echo "main 已更新，跳过旧提交的 Release 发布。"
+            exit 0
+          fi
+          tag="build-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gh release create "$tag" dist/device-info.apk \
+            --target "$GITHUB_SHA" \
+            --title "自动构建 $GITHUB_RUN_NUMBER" \
+            --notes "由 main 分支自动构建，提交 $GITHUB_SHA。"
